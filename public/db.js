@@ -2,7 +2,7 @@
 let db;
 
 // creating a request for budgets database
-const request = indexedDB.open("budgets", 1);
+const request = indexedDB.open("budgetDB", 1);
 
 request.onupgradeneeded = (event) => {
     // creating object store called "pending" and setting autoIncrement to true
@@ -17,4 +17,8 @@ request.onupgradeneeded = (event) => {
     if (navigator.onLine) {
       checkDatabase();
     }
+  };
+
+  request.onerror = (event) => {
+    console.log("Chaos Reigns!!!! " + event.target.errorCode);
   };
