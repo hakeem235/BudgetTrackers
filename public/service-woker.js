@@ -4,6 +4,7 @@ const DATA_CACHE_NAME = "data-cache-v1";
 var FILES_TO_CACHE = [
   "/",
   "/db.js",
+  "/index.html",
   "/index.js",
   "/manifest.webmanifest",
   "/styles.css",
