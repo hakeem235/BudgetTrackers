@@ -1,70 +1,65 @@
-// declaring database
+const indexedDB =
+  window.indexedDB ||
+  window.mozIndexedDB ||
+  window.webkitIndexedDB ||
+  window.msIndexedDB ||
+  window.shimIndexedDB;
+
 let db;
+const request = indexedDB.open("budget", 1);
 
-// creating a request for budgets database
-const request = indexedDB.open("budgetDB", 1);
-
-request.onupgradeneeded = (event) => {
-    // creating object store called "pending" and setting autoIncrement to true
-    const db = event.target.result;
-    db.createObjectStore("pending", {
-        autoIncrement: true
-    });
+request.onupgradeneeded = ({ target }) => {
+  let db = target.result;
+  db.createObjectStore("pending", { autoIncrement: true });
 };
 
-request.onsuccess = (event) => {
-    db = event.target.result;
+request.onsuccess = ({ target }) => {
+  db = target.result;
 
-    // checking if app is online before reading from db
-    if (navigator.onLine) {
-        checkDatabase();
-    }
+  // check if app is online before reading from db
+  if (navigator.onLine) {
+    checkDatabase();
+  }
 };
 
-request.onerror = (event) => {
-    console.log("Chaos Reigns!!!! " + event.target.errorCode);
+request.onerror = function(event) {
+  console.log("Woops! " + event.target.errorCode);
 };
 
 function saveRecord(record) {
-    // creating a transaction on the pending db with readwrite access
-    const transaction = db.transaction(["pending"], "readwrite");
-    // accessing pending object store
-    const store = transaction.objectStore("pending");
-    // adding record to pending object store
-    store.add(record);
+  const transaction = db.transaction(["pending"], "readwrite");
+  const store = transaction.objectStore("pending");
+
+  store.add(record);
 }
 
 function checkDatabase() {
-    // opening a transaction on pending db
-    const transaction = db.transaction(["pending"], "readwrite");
-    // accessing pending object store
-    const store = transaction.objectStore("pending");
-    // geting all records from store and setting to variable "allRecords"
-    const allRecords = store.getAll();
+  const transaction = db.transaction(["pending"], "readwrite");
+  const store = transaction.objectStore("pending");
+  const getAll = store.getAll();
 
-    allRecords.onsuccess = function () {
-        if (allRecords.result.length > 0) {
-            fetch("/api/transaction/bulk", {
-                    method: "POST",
-                    body: JSON.stringify(allRecords.result),
-                    headers: {
-                        Accept: "application/json, text/plain, */*",
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(() => {
-                    // if successful, opening a transaction on pending db
-                    const transaction = db.transaction(["pending"], "readwrite");
-                    // accessing pending object store
-                    const store = transaction.objectStore("pending");
-
-                    // clearing all items in store
-                    store.clear();
-                });
+  getAll.onsuccess = function() {
+    if (getAll.result.length > 0) {
+      fetch("/api/transaction/bulk", {
+        method: "POST",
+        body: JSON.stringify(getAll.result),
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json"
         }
-    };
+      })
+      .then(response => {        
+        return response.json();
+      })
+      .then(() => {
+        // delete records if successful
+        const transaction = db.transaction(["pending"], "readwrite");
+        const store = transaction.objectStore("pending");
+        store.clear();
+      });
+    }
+  };
 }
 
-// listening for app coming back online
+// listen for app coming back online
 window.addEventListener("online", checkDatabase);
